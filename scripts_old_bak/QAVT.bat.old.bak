@@ -1,0 +1,154 @@
+@echo off
+REM ===========================================================================
+REM             Contact Kun.Shen@lombardrisk.com if any bug    
+REM ===========================================================================
+title QAVT.bat running...
+if not "!PROCESSOR_ARCHITECTURE!"=="%PROCESSOR_ARCHITECTURE%" (
+	cmd /V:ON /C %0 %*
+    goto EOF
+)
+
+:Start
+
+
+set _QAVT_CONST_CLIENT_SCRIPT_ROOT=%~dp0
+set _QAVT_CONST_OUTPUT_EXCEL=
+set _QAVT_CONST_OUTPUT_LOG=
+
+if not "%_QAVT_CONST_CLIENT_SCRIPT_ROOT%"=="%SystemDrive%\QAVT_Auto\" (
+	echo Error: QAVT.bat must be run from the folder where it is installed!
+	echo.
+	goto ErrorExit
+)
+
+cd /d %_QAVT_CONST_CLIENT_SCRIPT_ROOT%
+attrib /s -r *
+md QAVT.Config & md QAVT.Output & md QAVT.Log
+
+REM ===========================================================================
+REM Reset _QAVT_VAR_*
+REM for /f "delims==" %%i in ('set _QAVT_VAR') do (
+REM    set %%i=
+)
+REM ===========================================================================
+
+
+echo ##################################
+echo Getting latest scripts...
+echo Into %_QAVT_CONST_CLIENT_SCRIPT_ROOT%scripts
+echo ##################################
+IF NOT EXIST %windir%\system32\robocopy.exe ( copy \\sha-sql2005-c\QA\Applications\robocopy.exe %windir%\system32\robocopy.exe /Y 1>nul)
+robocopy.exe /TBD /R:30 /W:60 /MIR %_QAVT_CONST_SERVER_SCRIPT_ROOT% %_QAVT_CONST_CLIENT_SCRIPT_ROOT%scripts 1>nul
+
+
+echo ##################################
+echo Getting latest INI files...
+echo Into %_QAVT_CONST_CLIENT_SCRIPT_ROOT%QAVT.Config
+echo ##################################
+set _QAVT_CONST_COMPUTER_NAME=%COMPUTERNAME%
+set _QAVT_CONST_CONFIG_NAME=
+robocopy.exe /TBD /R:30 /W:60 %_QAVT_CONST_SERVER_CONFIG_ROOT% %_QAVT_CONST_CLIENT_SCRIPT_ROOT%QAVT.Config QAVT.%_QAVT_CONST_COMPUTER_NAME%_*.ini 1>nul
+
+
+REM ===========================================================================
+REM select current config file
+set _QAVT_VAR_NUM_OF_CONFIG=0
+for /R %_QAVT_CONST_CLIENT_SCRIPT_ROOT%\QAVT.Config %%i in (QAVT.%_QAVT_CONST_COMPUTER_NAME%*.ini) do (
+    set /A _QAVT_VAR_NUM_OF_CONFIG+=1
+	set _QAVT_CONST_CONFIG_NAME=%%i
+) 
+echo ##################################
+echo _QAVT_VAR_NUM_OF_CONFIG is set to %_QAVT_VAR_NUM_OF_CONFIG%
+echo _QAVT_CONST_CONFIG_NAME is set to %_QAVT_CONST_CONFIG_NAME%
+echo ##################################
+REM 
+REM set _QAVT_VAR_NUM_OF_Sub_CountStr=0
+REM set _QAVT_VAR_NUM_OF_PREFIX_CONFIG=7
+REM call :Sub_CountStr %_QAVT_CONST_COMPUTER_NAME%
+REM set /a _QAVT_VAR_NUM_OF_PREFIX_CONFIG+=%_QAVT_VAR_NUM_OF_Sub_CountStr%
+REM set _QAVT_VAR_NUM_OF_Sub_CountStr=0
+REM call :Sub_CountStr %_QAVT_CONST_CLIENT_SCRIPT_ROOT%QAVT.Config
+REM set /a _QAVT_VAR_NUM_OF_PREFIX_CONFIG+=%_QAVT_VAR_NUM_OF_Sub_CountStr%
+REM
+set _QAVT_VAR_CONFIG_NAME=!_QAVT_CONST_CONFIG_NAME:%_QAVT_CONST_CLIENT_SCRIPT_ROOT%QAVT.Config\QAVT.%_QAVT_CONST_COMPUTER_NAME%_=!
+set _QAVT_VAR_CONFIG_NAME=!_QAVT_VAR_CONFIG_NAME:.ini=!
+REM
+
+if not "%_QAVT_VAR_NUM_OF_CONFIG%"=="1" (
+
+    echo Error: _QAVT_VAR_NUM_OF_CONFIG is not 1! 
+    goto ErrorExit
+
+) ELSE (
+	if "%_QAVT_VAR_CONFIG_NAME%"=="AnaDecision" (
+		
+		call :AnaDecision
+		
+	) 
+	
+)
+
+echo.
+echo QAVT.bat -- Finished Running.
+GOTO :EOF
+
+REM ===========================================================================
+REM Pre-condition: set _QAVT_VAR_NUM_OF_Sub_CountStr=0
+REM Use: call :Sub_CountStr QAVTstr
+REM Return: _QAVT_VAR_NUM_OF_Sub_CountStr=7
+REM ===========================================================================
+
+:Sub_CountStr
+	:intercept
+	set _QAVT_SUB_VAR=%1
+	IF not "!_QAVT_SUB_VAR:~%_QAVT_VAR_NUM_OF_Sub_CountStr%,1!"=="" (
+    set /a _QAVT_VAR_NUM_OF_Sub_CountStr+=1
+	GOTO :intercept
+	) ELSE (
+   echo %_QAVT_VAR_NUM_OF_Sub_CountStr%
+	)
+GOTO :EOF
+
+:AnaDecision
+title QAVT.bat - %_QAVT_CONST_COMPUTER_NAME% - %_QAVT_VAR_CONFIG_NAME%
+echo ##################################
+echo Calling AnaDecision scripts...
+echo Results at  %_QAVT_CONST_CLIENT_SCRIPT_ROOT%QAVT.Output
+echo Results at  %_QAVT_CONST_CLIENT_SCRIPT_ROOT%QAVT.Log
+echo ##################################
+
+FOR /F "tokens=1,* delims==" %%i in ('type %_QAVT_CONST_CONFIG_NAME%') do (
+  set %%i=%%j
+  echo %%i is set to %%j
+)
+
+call :SetPaths
+
+REM cscript //nologo "%_QAVT_CONST_CLIENT_SCRIPT_ROOT%\scripts\Pre_AnaDecision.vbs" %_QAVT_CONST_OUTPUT_EXCEL% %_QAVT_CONFIG_DBSERVER_INSTANCE% %_QAVT_CONFIG_DATABASE% %_QAVT_CONFIG_DBSERVER_USER% %_QAVT_CONFIG_DBSERVER_PASSWORD% %_QAVT_CONFIG_FORM%
+REM set _QAVT_VAR_NUM_OF_EXCEL=%errorlevel%
+REM echo %_QAVT_VAR_NUM_OF_EXCEL%
+REM cscript //nologo "%_QAVT_CONST_CLIENT_SCRIPT_ROOT%\scripts\AnaDecision.vbs" %_QAVT_CONST_OUTPUT_EXCEL% %_QAVT_VAR_NUM_OF_EXCEL%
+GOTO :EOF
+
+:SetPaths
+FOR /F "tokens=1,2,3* delims=-/ " %%i in ('ECHO %DATE%') do (
+	set __DAY=%%i%%j%%k
+)
+FOR /F "tokens=1,2,3* delims=:. " %%i in ('ECHO %TIME%') do (
+	set __TIME=%%i%%j%%k
+)
+set _QAVT_CONST_OUTPUT_EXCEL=%_QAVT_CONST_CLIENT_SCRIPT_ROOT%QAVT.Output\QAVT.AnaDecision_Results_%__DAY%_%__TIME%.xls
+set _QAVT_CONST_OUTPUT_LOG=%_QAVT_CONST_CLIENT_SCRIPT_ROOT%QAVT.Log\QAVT.AnaDecision_Error_%__DAY%_%__TIME%.log
+echo ##################################
+echo _QAVT_CONST_OUTPUT_EXCEL is set to %_QAVT_CONST_OUTPUT_EXCEL%
+echo _QAVT_CONST_OUTPUT_LOG is set to %_QAVT_CONST_OUTPUT_LOG%
+echo ##################################
+GOTO :EOF
+
+:ErrorExit
+echo.
+echo QAVT.bat -- Error encountered!  Exiting...
+set _QAVT_VAR_EXITCODE=666
+GOTO EOF
+
+:EOF

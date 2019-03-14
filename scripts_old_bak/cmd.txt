@@ -1,0 +1,6 @@
+ D:\testDEVCmpDecision.xlsx 172.20.20.55\sql2008 CN_4208_0906_SYSTEM CN_4209_0912_SYSTEM 
+ d:\test_pre_ana_decision.xlsx 172.20.20.55\sql2008 CN_4209_0912_SYSTEM A1310,S24 d:\test_pre_ana_decision.log sa password
+
+ d:\test_pre_ana_decision.xlsx  A1310,S24 d:\test_pre_ana_decision.log
+
+d:\test_cmp_decision.xlsx 172.20.20.55\sql2008 CN_4207_0823_SYSTEM CN_4208_0906_SYSTEM ,G01,,S24,A1310 sa password 
